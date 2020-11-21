@@ -1,0 +1,274 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+```
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+The observation data are collected through telephone surveys over landline telephones and cellular telephones. Since several family members usually share one landline telephone, landline telephone surveys are conducted on a household basis but the interviewees are randonly selected among eligible family members. Due to geographical concerns, disproportionate stratified sampling is used for landline telephone surveys.
+
+Therefore, the landline sample data are collected first by using stratified sampling and then by random sampling. The data hold high generalizability because of the strategical sampling methods. One hypothesis can be the causality between geographically health features and the sample data. For example, if the sample data are collected on a county basis (stratified groups), one county's health conditions can be different from another's, thus sheding light on the potential causality.
+
+Observation data over cellular telephones are randomly selected among the phone numbers provided by CDC. Survey data obtained from those who move out of state will be forwarded to the corresponding state, thus keeping the reliability of the sample data.
+
+Therefore, the cellular sample data are collected by using random sampling. Because those who are interviewed are not placed in groups like in an experiment setting, random assignment is not used. 
+* * *
+
+## Part 2: Research questions
+
+**Research question 1: For college students living in college housing, what relationships are there among their ages, mental health, sleep time, and emotional support?**
+
+**Rationale for Research question 1:** College students are reported to experience increasing mental health and decreasing sleep time. I'm curious about the relationships between their ages,mental health and sleep time. As for mental health, the availability of emotional support is an important means of improving mental problems. I hypothesize that those experiencing severe mental problems sleep less and have less emotional support than those suffering from light mental problems. I set my target sample data as those living in the college housing. Considering the commonly ages of studying in a college, I will use the variable 'X_ageg5yr'. Older people may have already had some health problems such as the trouble with sleep, hence bearing little relations with whether they live in college housing or not. Therefore, I exclude people who are 65 years old and older. 
+
+
+**Research question 2: Across the states, for those who are younger than 65 years old, What relationships are there between mental health and sleep time?**
+
+**Rationale for Research question 2:** The findings for Research Question 1 imply no consistent patterns between mental health and sleep time for those living in college housing. I want to know whether there exists a pattern across the country. I will divide the participants into two groups by using the variable 'X_age65yr': those younger than 65 and those aged 65 or older. Due to the complexity of the variables involved, I will separate these two groups. In Research Question 2, I examine the mental-sleep relationships for those younger than 65 years old; for Research Question 3, I examine the relationships for those aged 65 or older.
+
+
+**Research question 3:Across the states, for those who are 65 years old or older, What relationships are there between mental health and sleep time?**
+
+**Rationale for Research question 2:** Research Question 3 is a parallel quest with Research Question 2. A final summary will be made to compare the younger group ('working age') with the older group ('retired age').
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+**Research question 1: For college students living in college housing, what relationships are there among their ages, mental health, sleep time, and emotional support?**
+
+First, we want to see how many people live in college housing and how old they are.
+
+```{r total-number}
+brfss2013 %>%
+  filter (!is.na(colghous)) %>%
+  group_by(colghous,X_ageg5yr) %>%
+  summarise(count=n())
+```
+
+We find that 13 people are either 65 years old or older than 65 and 2 people did not provide any response. We will exclude these 15 people from our data sample.
+
+```{r exclude-older}
+brfss2013 %>%
+  filter (!is.na(colghous),!is.na(X_ageg5yr),X_ageg5yr != "Age 65 to 69",X_ageg5yr != "Age 70 to 74",X_ageg5yr != "Age 75 to 79", X_ageg5yr != "Age 80 or older") %>%
+  group_by(colghous,X_ageg5yr) %>%
+  summarise(count=n())
+```
+
+Next, we need to include their mental health 'menthlth', sleep time 'sleptim1', and emotional support 'emtsuprt' in our data. 
+
+```{r create-collegeH}
+collegeH_brfss2013 <- brfss2013 %>%
+  filter (!is.na(colghous),!is.na(X_ageg5yr),X_ageg5yr != "Age 65 to 69",X_ageg5yr != "Age 70 to 74",X_ageg5yr != "Age 75 to 79", X_ageg5yr != "Age 80 or older") %>%
+  group_by(colghous,X_ageg5yr,menthlth,sleptim1,emtsuprt) %>%
+  summarise(count=n())
+collegeH_brfss2013
+```
+
+We discover that none of them provide emotional support data. Therefore, we have to exclude the variable 'emtsuprt' and update collegeH_brfss2013.
+
+```{r update-collegeH}
+collegeH_brfss2013 <- brfss2013 %>%
+  filter (!is.na(colghous),!is.na(X_ageg5yr),X_ageg5yr != "Age 65 to 69",X_ageg5yr != "Age 70 to 74",X_ageg5yr != "Age 75 to 79", X_ageg5yr != "Age 80 or older") %>%
+  group_by(colghous,X_ageg5yr,menthlth,sleptim1) %>%
+  summarise(count=n())
+collegeH_brfss2013
+```
+
+Let's see what our data look like.
+```{r overview}
+summary(collegeH_brfss2013)
+```
+
+We find three people do not provide information about their sleep time. To facilitate the following statistics, we will exclude these three people as well.
+
+```{r exclude-NA}
+collegeH_brfss2013 <- brfss2013 %>%
+  filter (!is.na(colghous),!is.na(X_ageg5yr),X_ageg5yr != "Age 65 to 69",X_ageg5yr != "Age 70 to 74",X_ageg5yr != "Age 75 to 79", X_ageg5yr != "Age 80 or older", !is.na(sleptim1)) %>%
+  group_by(colghous,X_ageg5yr,menthlth,sleptim1) %>%
+  summarise(count=n())
+collegeH_brfss2013
+```
+
+Now our data are clean enough to do plotting.
+
+
+```{r plot}
+plot1<- ggplot(collegeH_brfss2013,aes(x=sleptim1, y= menthlth, size=count,color=X_ageg5yr))+ 
+  geom_point()
+plot1 + theme(legend.position="bottom",legend.box = "vertical")
+```
+
+## Summary
+Because of no data about people's (living in college housing) emotional support, I will summarize my findings about the relationships among age, mental health, and sleep time in order to answer Research Question 1.
+
+In Plot1, we can see that most of people living in college housing sleep for 5 to 10 hours and experience almost none mental problems. There are obvious differences between two age groups. For the age group of 18 to 24, people sleep for 8 hours on average; for the age group of 25 to 29, people sleep for 5 hours on average. Both groups report little mental issues. There are three outliers who suffer from severe mental problems; however, it seems there is direct relationship with their sleep time.
+
+The BRFSS2013 data do not include many college students living in college housing. For those randomly participating in the telephone survey, they do not demonstrate causal relationships between their mental health and age; they do show that younger people living in college housing sleep more than their older counterparts.
+
+
+**Research question 2: Across the states, What relationships are there among participants' ages, mental health and sleep time?**
+
+First, we would like to know whether the participants belong to the group of working age (younger than 65) or the group of retired age (65 or older). We use 'mutate' to create two categorical variables: 'working age' and 'retired age'.
+
+```{r working-or-retired}
+brfss2013 <-  brfss2013 %>%
+  mutate(retiredage = ifelse(X_age65yr=="Age 65 or older","retired age","working age"))
+brfss2013 %>% 
+  group_by(retiredage) %>% 
+  summarise(count = n())
+```
+
+Next, we need to focus on the "working age" and investigate any possible relationships between mental health 'menthlth' and sleep time 'sleptim1'.
+
+```{r working-plot}
+wa_brfss2013 <- brfss2013 %>% filter(retiredage=="working age")
+ggplot(wa_brfss2013,aes(x=sleptim1, y= menthlth)) +geom_point()
+```
+
+As we can see on the above plot, there exists no linear relationships between mental health and sleep time. To make the visuals more readily available to us, we will categorize sleep time 'sleptim1' into 'lacking', 'adequate', and 'excess'. According to some doctors, to maintain normal life, adults need 7-9 hours of sleep every day. Therefore, participants whose sleep time is fewer than 7 hours are categorized as 'lacking', participants whose sleep time is between 7 hours and 9 hours (including 7 and 9) are categorized as 'adequate',participants whose sleep time is more than 9 hours are categorized as 'excess'.
+
+```{r sleep-categorization}
+wa_brfss2013 <-  brfss2013 %>%
+  filter(retiredage=="working age") %>%
+  mutate(sleepstatus = ifelse(sleptim1 < 7,"lacking", ifelse(sleptim1 >=7 & sleptim1 <=9, "adequate", "excess")))
+wa_brfss2013 %>% 
+  group_by(sleepstatus) %>% 
+  summarise(count = n())
+```
+
+Using these three sleepstatus variable, we want to examine whether there is a pattern between sleep status and mental health.
+
+```{r sleepstatus}
+wafinal_brfss2013 <- wa_brfss2013 %>%
+  filter(!is.na(sleepstatus),!is.na(menthlth)) %>%
+  group_by(sleepstatus,menthlth) %>%
+  summarise (count=n())
+
+wafinal_brfss2013
+
+ggplot(wafinal_brfss2013,aes(x= menthlth,y=count,colour=sleepstatus)) +
+  geom_point() + scale_x_log10() + 
+  scale_colour_manual(values=c("adequate"="green", "lacking"="red", "excess"="black"))
+```
+
+It seems that the 'count' does not show the correlation well. We will use the percent on the y axis. We need to know to total number of participants in 'wafinal_brfss2013$count'
+
+```{r total-participants}
+sum(wafinal_brfss2013$count)
+```
+
+Let's revise the previous plot using the percents as y axis.
+```{r}
+ggplot(wafinal_brfss2013,aes(x= menthlth,y=count/sum(wafinal_brfss2013$count),colour=sleepstatus)) +
+  geom_point() + scale_x_log10() + 
+  scale_colour_manual(values=c("adequate"="green", "lacking"="red", "excess"="black")) +
+  labs(title = "Mental-sleep Relationships for Working Age", 
+       x = "Mental Health: Number of Days Feeling Bad",   y = "Percent") + 
+  ylim(c(0, 0.5))
+```
+
+## Summary
+The above plot shows that 43% of the working group report that they have taken adequate sleep and report zero days feeling bad; approximately 20% of the working group report that they have lacked sleep and report zero days feeling bad. By contrast, the rest of those reporting lack of sleep and all those who report having taken excess sleep , i.e, around 37% of the working group, to some extent, report some days feeling bad. Those with excess sleep are spread out along the x-axis, reporting zero ro 30 days feeling bad; a majority of those lacking sleep gather around 10-30 days feeling bad.
+
+Therefore, we can conclude that
+    1. when participants in the working group have adequate sleep, most of them report good mental health            status with very few days feeling bad (despite a few outliers); 
+    2. whereas, when participants in the working group lack sleep, there are two extremes. Some people (20%)         with a lack of sleep feel good and some other can have 10-30 days feeling bad; 
+    3. When participants in the working group have excess sleep, they show a spread-out patter between zero          days feeling bad and 30 days feeling bad.
+
+In one word, abnormal sleep time, especially a lack of sleep, negatively affects working people's mental health.
+
+
+**Research question 3: Across the states, for those who are 65 years old or older, What relationships are there between mental health and sleep time?**
+
+First, we want to know how many people 65 years old or older there are within three categorizations of sleepstatus.
+```{r retired-age}
+ rea_brfss2013 <-  brfss2013 %>%
+  filter(retiredage=="retired age") %>%
+  mutate(sleepstatus = ifelse(sleptim1 < 7,"lacking", ifelse(sleptim1 >=7 & sleptim1 <=9, "adequate", "excess")))
+rea_brfss2013 %>% 
+  group_by(sleepstatus) %>% 
+  summarise(count = n())
+```
+
+Next, let's prepare for the final data for plotting, as we handle working group above.
+
+```{r reafinal}
+reafinal_brfss2013 <- rea_brfss2013 %>%
+  filter(!is.na(sleepstatus),!is.na(menthlth)) %>%
+  group_by(sleepstatus,menthlth) %>%
+  summarise (count=n())
+
+reafinal_brfss2013
+```
+
+We want to know the total population of retired group in order to facilitate our understanding of following percents.
+```{r sum-pop}
+sum(reafinal_brfss2013$count)
+```
+
+We also want to know the population for the retired group falling in "adequate","excess" and "lacking".
+
+```{r subsetting-or-select}
+a <- reafinal_brfss2013[reafinal_brfss2013 $ sleepstatus == "adequate", ]
+print(paste(sum(a$count), "is the number of retired people with adequate sleep"))
+      
+b<- reafinal_brfss2013[reafinal_brfss2013 $ sleepstatus == "excess", ]
+print(paste(sum(b$count), "is the number of retired people with excess sleep"))
+
+c<- reafinal_brfss2013[reafinal_brfss2013 $ sleepstatus == "lacking", ]
+print(paste(sum(c$count), "is the number of retired people with lacking sleep"))
+```
+
+In addition, we need to know the percents each sleepstatus takes up.
+
+```{r table}
+library(data.table)
+data.table(sleepstatus=c("adequate","excess","lacking"), percent=c(104986/153225,8452/153225,39787/153225))
+```
+
+
+Time to take a look at the scatterplot.
+
+```{r scatterplot}
+ggplot(reafinal_brfss2013,aes(x= menthlth,y=count/sum(reafinal_brfss2013$count),colour=sleepstatus)) +
+  geom_point() + scale_x_log10() + 
+  scale_colour_manual(values=c("adequate"="green", "lacking"="red", "excess"="black")) +
+  labs(title = "Mental-sleep Relationships for Working Age", 
+       x = "Mental Health: Number of Days Feeling Bad",   y = "Percent") + 
+  ylim(c(0, 0.3))
+```
+
+
+## Summary
+Since 69% of the retired group report that they have taken adequate sleep; however, none of them report zero days feeling bad and instead report 1-15 days feeling bad. Approximately 19% of the retired group (see above plot) report that they have lacked sleep and report zero days feeling bad; the other 7% (26% - 19%) of the retired group suffer from 1-30 days feeling back; a majorty of this 7% report 10-30 days feeling bad. By contrast, those with excess sleep, i.e., around 6% of the working group, are spread out along the x-axis, reporting zero ro 30 days feeling bad.
+
+Therefore, we can conclude that
+    1. when participants in the retired group have adequate sleep, all of them report 1-15 days feeling bad,         implying little relations with their sleep time.
+    2. whereas, when participants in the retired group lack sleep, there are two extremes. Some people (19%)         with a lack of sleep feel good and some other can have 10-30 days feeling bad; 
+    3. When participants in the retired group have excess sleep, they show a spread-out pattern between zero         days feeling bad and 30 days feeling bad.
+
+In one word, adequate sleep time does not guarantee good mental health for retired people.
+

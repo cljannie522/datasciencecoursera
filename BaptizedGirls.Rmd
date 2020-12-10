@@ -1,0 +1,49 @@
+---
+title: "BaptizedGirls"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r load-packages, message = FALSE}
+library(dplyr)
+library(ggplot2)
+library(statsr)
+```
+
+```{r load-abrbuthnot-data}
+data(arbuthnot)
+```
+
+```{r load-arbuthnot-data}
+arbuthnot$girls
+```
+
+```{r load-arbuthnot-girls-data}
+summary(arbuthnot$girls)
+```
+
+
+```{r-load-prop_boys}
+library(statsr)
+data(present)
+present <- present %>%
++ mutate(total=boys + girls,prop_boys=boys/total)
+ggplot(data=present, aes(x=year,y=prop_boys))+geom_line()
+```
+
+```{r-load-more_boys}
+data(present)
+present <- present %>%
+  mutate(more_boys=boys>girls)
+```
+

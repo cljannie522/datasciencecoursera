@@ -1,0 +1,98 @@
+---
+title: "NYCFlights2"
+output: html_document
+---
+
+### Work on data nycflights
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-packages, message=FALSE}
+library(statsr)
+library(dplyr)
+library(ggplot2)
+```
+
+### Departure delays over months
+
+Which month would you expect to have the highest average delay departing 
+from an NYC airport?
+
+```{r mean-dep-delay-months}
+nycflights %>%
+  group_by(month) %>%
+  summarise(mean_dd = mean(dep_delay)) %>%
+  arrange(desc(mean_dd))
+```
+
+We can also visualize the distributions of departure delays across months using 
+side-by-side box plots:
+
+```{r delay-month-box}
+ggplot(nycflights, aes(x = factor(month), y = dep_delay)) +
+  geom_boxplot()
+```
+
+There is some new syntax here: We want departure delays on the y-axis and the
+months on the x-axis to produce side-by-side box plots. Side-by-side box plots
+require a categorical variable on the x-axis, however in the data frame `month` is 
+stored as a numerical variable (numbers 1 - 12). Therefore we can force R to treat
+this variable as categorical, what R calls a **factor**, variable with 
+`factor(month)`.
+
+### On time departure rate for NYC airports
+
+Suppose you will be flying out of NYC and want to know which of the 
+three major NYC airports has the best on time departure rate of departing flights. 
+Suppose also that for you a flight that is delayed for less than 5 minutes is 
+basically "on time". You consider any flight delayed for 5 minutes of more to be 
+"delayed".
+
+```{r dep-type}
+nycflights <- nycflights %>%
+  mutate(dep_type = ifelse(dep_delay < 5, "on time", "delayed"))
+```
+
+```{r}
+nycflights %>%
+  group_by(origin) %>%
+  summarise(ot_dep_rate = sum(dep_type == "on time") / n()) %>%
+  arrange(desc(ot_dep_rate))
+```
+
+We can also visualize the distribution of on on time departure rate across 
+the three airports using a segmented bar plot.
+
+```{r}
+ggplot(data = nycflights, aes(x = origin, fill = dep_type)) +
+  geom_bar()
+```
+
+ <!-- Add a column avg_speed -->
+```{r mutate}
+nycflights <- nycflights %>% 
+  mutate(avg_speed=distance*60/air_time)
+```
+
+### View the maximum average speed
+```{r max-avg_speed}
+nycflights %>% 
+  mutate(avg_speed=60*distance/air_time) %>% 
+  select(avg_speed,tailnum) %>% 
+  arrange(desc(avg_speed))
+
+```
+
+
+# Make a scatterplot of avg_speed vs. distance
+```{r scatterplot}
+ggplot(nycflights,aes(x=distance, y=avg_speed))+geom_point()
+```
+
+### What fraction of flights that were "delayed" departing arrive "on time"? 
+```{r fraction}
+nycflights <- nycflights %>%
+  mutate(dep_type = ifelse(dep_delay < 5, "on time", "delayed"))%>% 
+  mutate(arr_type=ifelse(arr_delay<=0,"on time","delayed"))
